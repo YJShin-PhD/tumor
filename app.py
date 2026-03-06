@@ -54,11 +54,12 @@ if uploaded_file:
         # 그래프 출력
         st.subheader("📈 종양 성장 곡선")
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.lineplot(data=df_long, x='Day', y='Tumor_Volume', hue='Group', marker='o', errorbar='se', err_kws={'capsize': 3}, ax=ax)
+        sns.lineplot(data=df_long, x='Day', y='Tumor_Volume', hue='Group', marker='o', errorbar='se', capsize=0.1, ax=ax)
         plt.title(f"Tumor Growth Curve ({stat_msg})")
         st.pyplot(fig)
 
         # 결과 다운로드 버튼
         st.subheader("📥 결과 다운로드")
         csv = df_long.to_csv(index=False).encode('utf-8')
+
         st.download_button("분석 결과(CSV) 다운로드", data=csv, file_name="analysis_result.csv", mime="text/csv")
