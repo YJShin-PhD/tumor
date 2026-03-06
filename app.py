@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import ttest_ind
 import re
 
-# 웹 페이지 설정 (기존 wide 모드 유지)
+# 웹 페이지 설정
 st.set_page_config(page_title="Tumor Analysis Dashboard", layout="wide")
 st.title("📊 Tumor Growth Analysis Dashboard")
 st.markdown("엑셀 파일을 업로드하면 자동으로 **성장률 계산, 통계 분석, 그래프**를 생성합니다.")
@@ -47,7 +47,7 @@ if uploaded_file:
         df_long['Tumor_Volume'] = df_long['Tumor_Volume'].apply(extract_number)
         df_long = df_long.dropna(subset=['Day', 'Tumor_Volume'])
         
-        # 날짜 정렬 (x축에 실제 측정 날짜 반영을 위함)
+        # 날짜 정렬
         df_long = df_long.sort_values(['Day', 'Group'])
 
         # 통계 분석 (마지막 측정일 기준)
@@ -59,13 +59,10 @@ if uploaded_file:
         if len(g1_data) > 1 and len(g2_data) > 1:
             _, p_val = ttest_ind(g1_data, g2_data, nan_policy='omit')
 
-        # --- 레이아웃 수정: 그래프 아래로 표 이동 ---
-        
         # 1. 그래프 영역
         st.subheader("📈 종양 성장 곡선")
         fig, ax = plt.subplots(figsize=(12, 6))
         
-        # x축을 실제 측정 날짜(Day) 수치로 표시
         sns.lineplot(
             data=df_long, 
             x='Day', 
@@ -82,4 +79,34 @@ if uploaded_file:
         plt.title(stat_title, fontsize=14)
         plt.xlabel("Day (Actual measurement date)")
         plt.ylabel("Tumor Volume (mm³)")
-        plt.grid(True, linestyle
+        plt.grid(True, linestyle='--', alpha=0.5)
+        
+        # x축 눈금 설정
+        unique_days = sorted(df_long['Day'].unique())
+        plt.xticks(unique_days)
+        
+        st.pyplot(fig)
+
+        st.divider()
+
+        # 2. 데이터 요약 표 영역
+        st.subheader(f"📊 데이터 요약 (마지막 측정일: Day {int(last_day)})")
+        st.markdown("<p style='text-align: right; color: gray;'>Unit: mm³</p>", unsafe_allow_html=True)
+        
+        summary = df_long[df_long['Day'] == last_day].groupby('Group')['Tumor_Volume'].agg(['mean', 'std', 'count']).reset_index()
+        st.table(summary.style.format({'mean': '{:.2f}', 'std': '{:.2f}'}))
+        
+        if p_val is not None:
+            st.info(f"💡 **T-test 결과:** 마지막 측정일 기준 G1과 G2 그룹 간 p-value는 **{p_val:.4f}** 입니다.")
+
+        # 데이터 다운로드
+        st.subheader("📥 분석 결과 저장")
+        csv = df_long.to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="분석 완료된 전체 데이터(CSV) 다운로드",
+            data=csv,
+            file_name=f"tumor_analysis_{int(last_day)}days.csv",
+            mime="text/csv"
+        )
+    else:
+        st.error("❌ 엑셀 파일 형식 에러: 'Group'과 'Animal no.' 열을 찾을 수 없습니다.")
